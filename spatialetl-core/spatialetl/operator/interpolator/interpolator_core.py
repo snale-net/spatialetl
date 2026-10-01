@@ -198,7 +198,7 @@ def resample_2d_to_grid(tri, newX, newY, data, method, map, interpolator="scipy"
         # We force the result's type to be the same as the original one
         data = data.astype(values.dtype)
 
-        if method == "linear" or method == "cubic" and is_binary_data:
+        if is_binary_data and (method == "linear" or method == "cubic"):
             # We avoid doubtful linear interpolation with binary data,
             # we compute binary data from 0
             data[data <= 0] = 0
@@ -303,11 +303,23 @@ def temporal_1d_interpolation(sourceAxis, targetAxis, data, method, extrapolate=
         raise ValueError("Unable to decode temporal interpolation method : " + str(method))
 
 
-def temporal_2d_interpolation(data, method):
+def temporal_2d_interpolation(source_axis, target_time, data,method,time_delta):
     logging.debug(f"[InterpolatorCore][temporal_interpolation()] Starting interpolation with method '{method}'.")
 
     if method == "nearest":
-        return data[0]
+        nearest_t_index = (np.abs(source_axis - target_time)).argmin()
+        if target_time - source_axis[nearest_t_index] == 0.0 or abs(
+                target_time - source_axis[nearest_t_index]) < time_delta:
+
+            logging.debug("[TimeCoverage][find_time_index()] Nearest datetime found : " + str(
+                source_axis[nearest_t_index]))
+
+            return data[nearest_t_index,:]
+
+        else:
+            raise ValueError("'" + str(
+                                          target_time) + "' not found. Maybe the TimeCoverage.TIME_DELTA (" + str(
+                                          time_delta) + ") is too small or the date is out the range.")
     elif method == "mean":
         return np.mean(data, axis=0)
     else:

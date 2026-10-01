@@ -164,6 +164,11 @@ class VariableDefinition:
     VARIABLE_NAME['sea_water_to_direction_at_sea_water_surface'] = "sea_surface_to_dir"
     CANONICAL_UNITS['sea_water_to_direction_at_sea_water_surface'] = "degree"  # from North=0"
 
+    STANDARD_NAME['sea_surface_residence_time'] = "sea_surface_residence_time"
+    LONG_NAME['sea_surface_residence_time'] = "Sea Surface Residence Time"
+    VARIABLE_NAME['sea_surface_residence_time'] = "sea_surface_residence_time"
+    CANONICAL_UNITS['sea_surface_residence_time'] = "day"
+
     #################
     # HYDRO
     # Ground level
@@ -213,6 +218,11 @@ class VariableDefinition:
     VARIABLE_NAME['sea_water_to_direction_at_ground_level'] = "sea_bottom_to_dir"
     CANONICAL_UNITS['sea_water_to_direction_at_ground_level'] = "degree"
 
+    STANDARD_NAME['residence_time_at_ground_level'] = "residence_time_at_ground_level"
+    LONG_NAME['residence_time_at_ground_level'] = "Residence Time At Ground Level"
+    VARIABLE_NAME['residence_time_at_ground_level'] = "residence_time_at_ground_level"
+    CANONICAL_UNITS['residence_time_at_ground_level'] = "day"
+
     #################
     # HYDRO
     # 2D
@@ -251,6 +261,11 @@ class VariableDefinition:
     LONG_NAME['water_volume_transport_into_sea_water_from_rivers'] = "Water Volume Transport Into Sea Water From Rivers"
     VARIABLE_NAME['water_volume_transport_into_sea_water_from_rivers'] = "rivers_flux"
     CANONICAL_UNITS['water_volume_transport_into_sea_water_from_rivers'] = "m3 s-1"
+
+    STANDARD_NAME['ocean_tracer_residence_time'] = "ocean_tracer_residence_time"
+    LONG_NAME['ocean_tracer_residence_time'] = "Water Residence Time From Ocean Tracers"
+    VARIABLE_NAME['ocean_tracer_residence_time'] = "residence_time"
+    CANONICAL_UNITS['ocean_tracer_residence_time'] = "days"
 
     #################
     # HYDRO
@@ -524,7 +539,6 @@ class VariableDefinition:
     LONG_NAME['wind_from_direction_10m'] = "Wind From Direction 10m"
     VARIABLE_NAME['wind_from_direction_10m'] = "wind_from_dir_10m"
     CANONICAL_UNITS['wind_from_direction_10m'] = "degree" # from North=0 / East=90"
-
 
 
 

@@ -67,7 +67,7 @@ def extract_times_from_file(file):
         times.append(cftime.datetime(y, m, d, hh, mm, ss))
         return times
 
-    if not (os.path.isfile(file) and "bathycote_in" not in str(file)):
+    if not (os.path.isfile(file) and "bathycote_in" not in str(file)) and "drifter_initial" not in str(file):
         return times
 
     try:
@@ -77,15 +77,15 @@ def extract_times_from_file(file):
                 return times
 
             units = normalize_units(time_var.units)
-            calendar = getattr(time_var, "calendar", "standard")
+            calendar = getattr(time_var, "calendar", "gregorian")
 
-            times = time_var[:]
+            current_time = time_var[:]
 
             # vectorized conversion when possible
-            if times.shape == (1,):
-               times.append(num2date(times[0], units=units, calendar=calendar))
+            if current_time.shape == (1,):
+               times.append(num2date(current_time[0], units=units, calendar=calendar))
             else:
-                decoded = num2date(times, units=units, calendar=calendar)
+                decoded = num2date(current_time, units=units, calendar=calendar)
                 times.extend(t.replace(microsecond=0) for t in decoded)
 
     except Exception as ex:
@@ -148,6 +148,7 @@ La classe SymphonieReader permet de lire les données du format Symphonie
             for f in self.files:
                 self.times.extend(extract_times_from_file(f))
 
+        # Note : sort in times and files has to be exactly the same order
         self.t_size = len(self.times)
 
         if len(self.times) == 0:
@@ -161,6 +162,7 @@ La classe SymphonieReader permet de lire les données du format Symphonie
         if index_t != self.last_opened_t_index:
             self.close()
             self.ncfile = Dataset(self.files[index_t])
+            self.last_opened_t_index = index_t
 
     def close(self):
         self.ncfile.close()
@@ -426,10 +428,10 @@ La classe SymphonieReader permet de lire les données du format Symphonie
     def read_axis_t(self, tmin, tmax, timestamp):
 
         if timestamp == 1:
-            return [(t - TimeCoverage.TIME_DATUM).total_seconds() \
-                    for t in self.times[tmin:tmax]];
+            return np.asarray([(t - TimeCoverage.TIME_DATUM).total_seconds() \
+                    for t in self.times[tmin:tmax]]);
         else:
-            return self.times[tmin:tmax]
+            return np.asarray(self.times[tmin:tmax])
 
     # Variables
     def read_variable_time(self, tmin, tmax, timestamp):
@@ -590,7 +592,7 @@ La classe SymphonieReader permet de lire les données du format Symphonie
             if SYMPHONIEReader.APPLY_WET_MASK and "wetmask_t" in self.ncfile.variables:  # We apply the wetmask
                 data[self.ncfile.variables["wetmask_t"][0, ymin:ymax, xmin:xmax] == 0] = np.nan
 
-            data[data < 0.1] = 0  # Remove values on topo
+            data[data < 0.01] = np.nan  # Remove values on topo
 
             return data
 
@@ -1002,6 +1004,9 @@ La classe SymphonieReader permet de lire les données du format Symphonie
             self.open_file(index_t)
             if "hs_wave_t" in self.ncfile.variables:
                 data = np.ma.filled(self.ncfile.variables["hs_wave_t"][0, ymin:ymax, xmin:xmax],
+                                    fill_value=np.nan)
+            elif "HS" in self.ncfile.variables:
+                data = np.ma.filled(self.ncfile.variables["HS"][0, ymin:ymax, xmin:xmax],
                                     fill_value=np.nan)
             else:
                 logging.debug(

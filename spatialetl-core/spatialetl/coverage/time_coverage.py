@@ -33,6 +33,7 @@ from array_split import shape_split
 
 from spatialetl.coverage.coverage import Coverage
 from spatialetl.exception.not_found_in_rank_error import NotFoundInRankError
+from spatialetl.operator.analytic.residence_time import compute_residence_time
 from spatialetl.operator.interpolator.interpolator_core import temporal_2d_interpolation
 from spatialetl.utils.logger import logging
 
@@ -74,7 +75,7 @@ class TimeCoverage(Coverage):
             else:
                 raise ValueError("start_time have to be string or datetime. Found " + str(type(start_time)))
 
-            nearest_t_index = (np.abs(np.asarray(self.source_global_axis_t) - time)).argmin()
+            nearest_t_index = (np.abs(self.source_global_axis_t - time)).argmin()
 
             if time - datetime.strptime(str(self.source_global_axis_t[nearest_t_index]),
                                         '%Y-%m-%d %H:%M:%S') == zero_delta or abs(
@@ -111,13 +112,21 @@ class TimeCoverage(Coverage):
         if freq is not None:
             self.temporal_resampling = True
 
-            self.target_global_axis_t = pandas.date_range(start=datetime.utcfromtimestamp(
-                self.read_axis_t(type="source_global", with_overlap=False, timestamp=1)[tmin]),
-                end=datetime.utcfromtimestamp(
-                    self.read_axis_t(type="source_global", with_overlap=False,
-                                     timestamp=1)[tmax - 1]),
-                freq=freq).to_pydatetime();
+            start_date = datetime.utcfromtimestamp(
+                self.read_axis_t(type="source_global", with_overlap=False, timestamp=1)[tmin])
+            end_date = datetime.utcfromtimestamp(
+                self.read_axis_t(type="source_global", with_overlap=False,
+                                 timestamp=1)[tmax - 1])
+
+            self.target_global_axis_t = pandas.date_range(
+                start=start_date,
+                end=end_date,
+                freq=freq).to_pydatetime()
+
             self.target_global_t_size = np.shape(self.target_global_axis_t)[0]
+
+            if self.target_global_t_size == 0:
+                raise ValueError("Target time axis is empty. Change start_time or end_time")
 
         else:
             self.target_global_axis_t = self.source_global_axis_t[tmin:tmax]
@@ -297,21 +306,17 @@ class TimeCoverage(Coverage):
 
         target_global_axis_t = self.target_global_axis_t[map["dst_global_t"]]
 
-        if target_global_t_size == 1:
-            tmin = (np.abs(np.asarray(source_global_axis_t) - np.min(
-                target_global_axis_t))).argmin()
-            tmax = tmin + 1
-        else:
-            idx = np.where(
-                (np.asarray(source_global_axis_t) >= np.min(
-                    target_global_axis_t)) &
-                (np.asarray(source_global_axis_t) <= np.max(
-                    target_global_axis_t)))
+        # TODO Add delta time
+        idx = np.where(
+            (source_global_axis_t >= np.min(
+                target_global_axis_t - TimeCoverage.TIME_DELTA)) &
+            (source_global_axis_t <= np.max(
+                target_global_axis_t + TimeCoverage.TIME_DELTA)))
 
-            tmin = np.min(idx[0])
-            tmax = np.max(idx[0]) + 1
+        tmin = np.min(idx[0])
+        tmax = np.max(idx[0]) + 1
 
-            # SRC GLOBAL
+        # SRC GLOBAL
         map["src_global_t"] = np.s_[int(tmin):int(tmax)]
         map["src_global_t_size"] = tmax - tmin
 
@@ -344,7 +349,7 @@ class TimeCoverage(Coverage):
         return map
 
     # Axis
-    def find_time_index(self, t, method="fast", domain="source"):
+    def find_time_index(self, t, domain="source"):
         """Retourne l'index de la date la plus proche à TIME_DELTA_MIN prêt.
     @type t: datetime ou int
     @param t: date souhaitée ou l'index de la date souhaitée
@@ -360,85 +365,55 @@ class TimeCoverage(Coverage):
 
             indexes_t.append(int(t));
 
-        elif type(t) == datetime or type(t) == cftime._cftime.datetime or type(t) == cftime._cftime.real_datetime:
+        elif type(t) == datetime or type(t) == cftime._cftime.datetime or type(t) == cftime._cftime.real_datetime or type(t) == cftime._cftime.DatetimeGregorian:
 
             target_timestamp = (t - TimeCoverage.TIME_DATUM).total_seconds()
-            array = np.asarray(self.read_axis_t(type="source_mpi", timestamp=1))
+            array = self.read_axis_t(type="source_mpi", timestamp=1)
 
             logging.debug("[TimeCoverage][find_time_index()] Looking for : " + str(t))
 
-            if method == "fast":
-                if TimeCoverage.TIME_INTERPOLATION_METHOD == "nearest":
-                    nearest_t_index = (np.abs(array - target_timestamp)).argmin()
-                    if target_timestamp - array[nearest_t_index] == 0.0 or abs(
-                            target_timestamp - array[nearest_t_index]) < (TimeCoverage.TIME_DELTA).total_seconds():
+            X = np.abs(array - target_timestamp)
+            idx = np.where(X <= (TimeCoverage.TIME_DELTA).total_seconds())
 
-                        logging.debug("[TimeCoverage][find_time_index()] Nearest datetime found : " + str(
-                            self.read_axis_t(type="source_mpi", timestamp=0)[nearest_t_index]))
-
-                        if domain == "source":
-                            indexes_t.append(nearest_t_index)
-                        elif domain == "source_global":
-                            indexes_t.append(self.parallel_map[self.rank]["src_global_t"].start + nearest_t_index)
-                        else:
-                            raise ValueError("Type doesn't match [source, source_global]")
-
-                    else:
-                        raise NotFoundInRankError(self.rank,
-                                                  "'" + str(
-                                                      t) + "' not found. Maybe the TimeCoverage.TIME_DELTA (" + str(
-                                                      TimeCoverage.TIME_DELTA) + ") is too small or the date is out the range.")
-
-                elif TimeCoverage.TIME_INTERPOLATION_METHOD == "mean":
-
-                    X = np.abs(array - target_timestamp)
-                    idx = np.where(X <= (TimeCoverage.TIME_DELTA).total_seconds())
-
-                    if (len(idx[0]) == 1):
-                        index_t = idx[0][0]
-                        if domain == "source":
-                            indexes_t.append(int(index_t))
-                        elif domain == "source_global":
-                            indexes_t.append(self.parallel_map[self.rank]["src_global_t"].start + int(index_t))
-                        else:
-                            raise ValueError("Type doesn't match [source, source_global]")
-
-                        logging.debug(
-                            f"[TimeCoverage][find_time_index()] Found : {self.read_axis_t(type='source_mpi', timestamp=0)[int(index_t)]}")
-
-                    else:
-                        for index in range(np.shape(idx)[1]):
-                            index_t = idx[0][index]
-
-                            if domain == "source":
-                                indexes_t.append(int(index_t))
-                            elif domain == "source_global":
-                                indexes_t.append(self.parallel_map[self.rank]["src_global_t"].start + int(index_t))
-                            else:
-                                raise ValueError("Type doesn't match [source, source_global]")
-
-                            logging.debug(
-                                f"[TimeCoverage][find_time_index()] Found : {self.read_axis_t(type='source_mpi', timestamp=0)[int(index_t)]}")
-
-                    if not indexes_t:
-                        raise NotFoundInRankError(self.rank,
-                                                  "'" + str(
-                                                      t) + "' not found. Maybe the TimeCoverage.TIME_DELTA (" + str(
-                                                      TimeCoverage.TIME_DELTA) + ") is too small or the date is out the range.")
-
+            if (len(idx[0]) == 1):
+                index_t = idx[0][0]
+                if domain == "source":
+                    indexes_t.append(int(index_t))
+                elif domain == "source_global":
+                    indexes_t.append(self.parallel_map[self.rank]["src_global_t"].start + int(index_t))
                 else:
-                    raise NotImplementedError(
-                        "Method " + str(TimeCoverage.TIME_INTERPOLATION_METHOD) + " is not implemented.")
+                    raise ValueError("Type doesn't match [source, source_global]")
+
+                logging.debug(
+                    f"[TimeCoverage][find_time_index()] Found : {self.read_axis_t(type='source_mpi', timestamp=0)[int(index_t)]}")
+
             else:
-                raise NotImplementedError("Method " + str(method) + " is not implemented for regular grid.")
+                for index in range(np.shape(idx)[1]):
+                    index_t = idx[0][index]
+
+                    if domain == "source":
+                        indexes_t.append(int(index_t))
+                    elif domain == "source_global":
+                        indexes_t.append(self.parallel_map[self.rank]["src_global_t"].start + int(index_t))
+                    else:
+                        raise ValueError("Type doesn't match [source, source_global]")
+
+                    logging.debug(
+                        f"[TimeCoverage][find_time_index()] Found : {self.read_axis_t(type='source_mpi', timestamp=0)[int(index_t)]}")
+
+            if not indexes_t:
+                raise NotFoundInRankError(self.rank,
+                                          "'" + str(
+                                              t) + "' not found. Maybe the TimeCoverage.TIME_DELTA (" + str(
+                                              TimeCoverage.TIME_DELTA) + ") is too small or the date is out the range.")
 
         else:
             raise ValueError("" + str(t) + " have to be an integer or a datetime. Current type: " + str(type(t)))
 
-        indexes_t = np.unique(indexes_t)
+        indexes_t = np.array(np.sort(np.unique(indexes_t)))
         logging.debug("[TimeCoverage][find_time_index()] Found " + str(len(indexes_t)) + " candidate datetime(s)")
 
-        return np.array(indexes_t)
+        return indexes_t
 
     def read_axis_t(self, type="target_mpi", with_overlap=False, timestamp=0, current_thread: int = None):
         """Retourne les valeurs de l'axe t.
@@ -526,7 +501,11 @@ class TimeCoverage(Coverage):
             self.parallel_map[self.rank]["src_global_y_overlap"].start,
             self.parallel_map[self.rank]["src_global_y_overlap"].stop) for t in range(0, len(index_t))])
 
-        data = temporal_2d_interpolation(layers, TimeCoverage.TIME_INTERPOLATION_METHOD)
+        times = self.read_axis_t(type="source_mpi")
+        source_time = times[index_t]
+
+        data = temporal_2d_interpolation(source_time, time, layers, TimeCoverage.TIME_INTERPOLATION_METHOD,
+                                         TimeCoverage.TIME_DELTA)
 
         is_vector = True if len(np.shape(data)) == 3 and np.shape(data)[0] == 2 else False
 
@@ -620,6 +599,39 @@ class TimeCoverage(Coverage):
     @return: un tableau en deux dimensions [u_comp,v_comp] contenant chacun deux dimensions [y,x]."""
         return self.__read_variable(inspect.stack()[0][3], time=t)
 
+    def read_variable_sea_surface_residence_time_at_time(self, t):
+        """
+            Read the sea surface residence time at a given time
+            @param t: date souhaitée
+            @return: un tableau en deux dimensions [y,x].
+        """
+        fn = getattr(self.reader, "read_variable_sea_surface_biogeochemical_tracer_1_at_time")
+
+        indexes_t = self.find_time_index(t);
+
+        layers = np.stack([fn(
+            self.parallel_map[self.rank]["src_global_t"].start + indexes_t[index_t],
+            self.parallel_map[self.rank]["src_global_x_overlap"].start,
+            self.parallel_map[self.rank]["src_global_x_overlap"].stop,
+            self.parallel_map[self.rank]["src_global_y_overlap"].start,
+            self.parallel_map[self.rank]["src_global_y_overlap"].stop) for index_t in range(0, len(indexes_t))])
+
+        times = self.read_axis_t(type="source_mpi")
+        source_time = times[indexes_t] - np.min(times)
+
+        def to_decimal_days(td):
+            return td.total_seconds() / (3600 * 24)
+
+        vectorized_square = np.vectorize(to_decimal_days)
+        result = vectorized_square(source_time)
+
+        data = compute_residence_time(result, layers)
+
+        if self.horizontal_resampling:
+            return self.resample_2d_variable(data)
+        else:
+            return data[self.parallel_map[self.rank]["dst_global_y"], self.parallel_map[self.rank]["dst_global_x"]]
+
     #################
     # HYDRO
     # Ground level
@@ -646,6 +658,39 @@ class TimeCoverage(Coverage):
            @return: un tableau en deux dimensions [u_comp,v_comp] contenant chacun deux dimensions [y,x]."""
         return self.__read_variable(inspect.stack()[0][3], time=t)
 
+    def read_variable_residence_time_at_ground_level_at_time(self, t):
+        """
+            Read the residence time at ground level at a given time
+            @param t: date souhaitée
+            @return: un tableau en deux dimensions [y,x].
+        """
+        fn = getattr(self.reader, "read_variable_biogeochemical_tracer_1_at_ground_level_at_time")
+
+        indexes_t = self.find_time_index(t);
+
+        layers = np.stack([fn(
+            self.parallel_map[self.rank]["src_global_t"].start + indexes_t[index_t],
+            self.parallel_map[self.rank]["src_global_x_overlap"].start,
+            self.parallel_map[self.rank]["src_global_x_overlap"].stop,
+            self.parallel_map[self.rank]["src_global_y_overlap"].start,
+            self.parallel_map[self.rank]["src_global_y_overlap"].stop) for index_t in range(0, len(indexes_t))])
+
+        times = self.read_axis_t(type="source_mpi")
+        source_time = times[indexes_t] - np.min(times)
+
+        def to_decimal_days(td):
+            return td.total_seconds() / (3600 * 24)
+
+        vectorized_square = np.vectorize(to_decimal_days)
+        result = vectorized_square(source_time)
+
+        data = compute_residence_time(result, layers)
+
+        if self.horizontal_resampling:
+            return self.resample_2d_variable(data)
+        else:
+            return data[self.parallel_map[self.rank]["dst_global_y"], self.parallel_map[self.rank]["dst_global_x"]]
+
     #################
     # HYDRO
     # 2D
@@ -660,7 +705,7 @@ class TimeCoverage(Coverage):
 
     def read_variable_barotropic_sea_water_speed_at_time(self, date):
         comp = self.read_variable_barotropic_sea_water_velocity_at_time(date)
-        return np.hypot(comp[0],comp[1])
+        return np.hypot(comp[0], comp[1])
 
     def read_variable_barotropic_sea_water_from_direction_at_time(self, date):
         comp = self.read_variable_barotropic_sea_water_velocity_at_time(date)
@@ -681,6 +726,13 @@ class TimeCoverage(Coverage):
                 result[y, x] = 270. - (180.0 / math.pi) * (math.atan2(comp[0][y, x], comp[1][y, x])) % 360.0
 
         return result
+
+    def read_variable_ocean_tracer_residence_time_at_time(self, t):
+        """ Read ocean tracer residence time at the given time
+           @type t: datetime ou l'index
+           @param t: date souhaitée
+           @return: un tableau en deux dimensions [y,x]."""
+        return self.__read_variable(inspect.stack()[0][3], time=t)
 
     #################
     # WAVES

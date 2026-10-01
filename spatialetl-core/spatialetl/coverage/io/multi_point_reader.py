@@ -21,54 +21,64 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 import numpy as np
+from scipy.interpolate import griddata, NearestNDInterpolator
 
 from spatialetl.coverage import TimeCoverage
-from spatialetl.coverage.io.coverage_reader import CoverageReader
+from spatialetl.coverage.io.memory_reader import MemoryReader
+from spatialetl.operator.interpolator.smoothing import nanmoving_average2
+from spatialetl.point import TimeMultiPoint
+from spatialetl.utils.logger import logging
 
 
-class MemoryReader(CoverageReader):
+class MultiPointReader(MemoryReader):
 
     def __init__(self,
-                 x_axis,
-                 y_axis,
-                 t_axis=None,
-                 z_axis=None,
-                 bathymetry=None,
-                 surface_air_pressure=None,
-                 residence_time=None,
+                 points,
+                 resolution_x,
+                 resolution_y,
+                 mask_axis_x=None,
+                 mask_axis_y=None,
+                 mask_values=None
                  ):
-        self.x = x_axis
-        self.y = y_axis
-        self.t = t_axis
 
-        self.bathy = bathymetry
-        self.sp = surface_air_pressure
-        self.residence_time = residence_time
+        self.points = points
+        x = points.read_axis_x()
+        y = points.read_axis_y()
+        self.target_axis_x = np.arange(min(x), max(x), resolution_x)
+        self.target_axis_y = np.arange(min(y), max(y), resolution_y)
+        self.target_grid_x, self.target_grid_y = np.meshgrid(self.target_axis_x, self.target_axis_y)
+        self.src_points = (points.read_axis_x().flatten(), points.read_axis_y().flatten())
+
+        if mask_axis_x is not None and mask_axis_y is not None and mask_values is not None:
+            # If needed, we interpole the land sea mask on the destination grid
+            logging.info("[MultiPointReader] Interpolate sea binary mask")
+            src_grid_x, src_grid_y = np.meshgrid(mask_axis_x, mask_axis_y)
+            points = np.array([src_grid_x.flatten(), src_grid_y.flatten()]).T
+            interp = NearestNDInterpolator(points, mask_values.flatten())
+            self.mask = interp((self.target_grid_x, self.target_grid_y))
+        else:
+            self.mask = None
+
+        if type(self.points) == TimeMultiPoint:
+            self.t = self.points.read_axis_t()
 
     def is_regular_grid(self):
-        return True if len(np.shape(self.x)) == 1 else False
+        return True
 
     def get_t_size(self):
         return np.shape(self.t)[0];
 
     def get_x_size(self):
-        return np.shape(self.x)[0];
+        return np.shape(self.target_axis_x)[0];
 
     def get_y_size(self):
-        return np.shape(self.y)[0];
+        return np.shape(self.target_axis_y)[0];
 
     def read_axis_x(self, xmin, xmax, ymin=None, ymax=None):
-        if self.is_regular_grid():
-            return self.x[xmin:xmax]
-        else:
-
-            return self.x[ymin:ymax, xmin:xmax]
+        return self.target_axis_x[xmin:xmax]
 
     def read_axis_y(self, xmin=None, xmax=None, ymin=None, ymax=None):
-        if self.is_regular_grid():
-            return self.y[ymin:ymax]
-        else:
-            return self.y[ymin:ymax, xmin:xmax]
+        return self.target_axis_y[ymin:ymax]
 
     def read_axis_t(self, tmin, tmax, timestamp):
         if timestamp == 1:
@@ -101,11 +111,17 @@ class MemoryReader(CoverageReader):
     # 2D
     #################
 
-    def read_variable_bathymetry(self, xmin, xmax, ymin, ymax):
-        return self.bathy[ymin:ymax, xmin:xmax]
+    def read_variable_ocean_tracer_residence_time_at_time(self, index_t, xmin, xmax, ymin, ymax):
+        # We get the datetime of the index_t because we need to find all times records available according to TimeMultiPoint.TIME_DELTA
+        time = self.t[index_t]
+        values = self.points.read_variable_ocean_tracer_residence_time_at_time(time)
+        data = griddata(self.src_points, values.flatten(), (self.target_grid_x, self.target_grid_y), method='linear')
 
-    def read_variable_residence_time_at_time(self, index_t, xmin, xmax, ymin, ymax):
-        return self.residence_time[index_t, ymin:ymax, xmin:xmax]
+        if self.mask is not None:
+            data[self.mask != 1] = np.nan
+
+        data = nanmoving_average2(data, 6)
+        return data[ymin:ymax, xmin:xmax]
 
     #################
     # METEO

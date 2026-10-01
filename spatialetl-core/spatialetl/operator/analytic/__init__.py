@@ -18,40 +18,5 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+__path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
-[project]
-name = "spatialetl-core"
-version = "0.0.1"
-requires-python = ">=3.12"
-authors = [
-  {name = "Fabien RÉTIF", email = "fabien.retif@snale.net"},
-]
-description = "Core packages for SpatialETL"
-
-dependencies = [
-  "setuptools>=70.1.1",
-  "cython==3.2.2",
-  "numpy==2.3.1",
-  "pandas==2.3.3",
-  "scipy==1.16.3",
-  "array_split==0.6.5",
-  "pytest==9.0.3"
-]
-
-[project.urls]
-Homepage = "https://lab.snale.net/produits/pyspatialetl"
-Documentation = "https://readthedocs.org"
-Repository = "https://github.com/snale-net/SpatialETL.git"
-
-[tool.hatch.build.targets.wheel]
-packages = ['spatialetl']
-[tool.hatch.metadata]
-allow-direct-references = true
-
-[tool.uv.sources]
-# These names must match the names as defined in the pyproject.toml of the workspace items,
-# *not* the workspace folder paths
-spatialetl-core = {workspace = true}

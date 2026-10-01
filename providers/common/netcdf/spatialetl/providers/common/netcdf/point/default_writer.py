@@ -251,6 +251,29 @@ class DefaultWriter(MultiPointWriter):
                 time)
             time_index += 1
 
+    def write_variable_ocean_tracer_residence_time(self):
+        var = self.ncfile.createVariable(VariableDefinition.VARIABLE_NAME['ocean_tracer_residence_time'], float32,
+                                         (VariableDefinition.VARIABLE_NAME['time'],
+                                          VariableDefinition.VARIABLE_NAME['point']),
+                                         fill_value=9.96921e+36)
+        var.long_name = VariableDefinition.LONG_NAME['ocean_tracer_residence_time']
+        var.standard_name = VariableDefinition.STANDARD_NAME['ocean_tracer_residence_time']
+        var.units = VariableDefinition.CANONICAL_UNITS['ocean_tracer_residence_time']
+
+        logging.info('[DefaultWriter] Writing variable \'' + str(
+            VariableDefinition.LONG_NAME['ocean_tracer_residence_time']) + '\'')
+
+        time_index = 0
+        for time in self.points.read_axis_t():
+            logging.info(
+                '[DefaultWriter] Writing variable \'' + str(
+                    VariableDefinition.LONG_NAME['ocean_tracer_residence_time']) + '\' at time \'' + str(
+                    time) + '\'')
+
+            var[time_index:time_index + 1, :] = self.points.read_variable_ocean_tracer_residence_time_at_time(
+                time)
+            time_index += 1
+
     #################
     # HYDRO
     # Sea Surface
