@@ -27,13 +27,7 @@ jobs:
         if: ${{ (steps.provider-parser.outputs.match != '') }}
         id: provider-match
         run: |          
-          echo provider-path=$(echo spatialetl/providers/${{ steps.provider-parser.outputs.group1 }}) | sed 's/common-/common\//g' >> $GITHUB_OUTPUT
-
-      - name: "Debug provider values"
-        run: |
-          echo "match='${{ steps.provider-parser.outputs.match }}'"
-          echo "provider-path='${{ steps.provider-match.outputs.provider-path }}'"
-          echo "hash='${{ hashFiles(steps.provider-match.outputs.provider-path) }}'"
+          echo provider-path=$(echo providers/${{ steps.provider-parser.outputs.group1 }}) | sed 's/common-/common\//g' >> $GITHUB_OUTPUT
 
       - name: "Check if provider path exists"
         if: >-
