@@ -35,7 +35,7 @@ license = "MIT"
 license-files = ["LICEN[CS]E.*"]
 
 dependencies = [
-    "spatialetl-core==0.0.1",
+    "spatialetl-core==0.2.0",
 ]
 packages = []
 
