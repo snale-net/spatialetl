@@ -32,8 +32,9 @@ jobs:
           skip-existing: true
           attestations: true
       - name: Build core package
+        working-directory: spatialetl-core
         run: |
-          python -m build --outdir core
+          python -m build --outdir ../core
       - name: Publish core package distribution 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
