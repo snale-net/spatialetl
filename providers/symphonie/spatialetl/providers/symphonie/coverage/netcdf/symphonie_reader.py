@@ -592,7 +592,7 @@ La classe SymphonieReader permet de lire les données du format Symphonie
             if SYMPHONIEReader.APPLY_WET_MASK and "wetmask_t" in self.ncfile.variables:  # We apply the wetmask
                 data[self.ncfile.variables["wetmask_t"][0, ymin:ymax, xmin:xmax] == 0] = np.nan
 
-            data[data < 0.1] = 0  # Remove values on topo
+            data[data < 0.01] = np.nan  # Remove values on topo
 
             return data
 
@@ -1004,6 +1004,9 @@ La classe SymphonieReader permet de lire les données du format Symphonie
             self.open_file(index_t)
             if "hs_wave_t" in self.ncfile.variables:
                 data = np.ma.filled(self.ncfile.variables["hs_wave_t"][0, ymin:ymax, xmin:xmax],
+                                    fill_value=np.nan)
+            elif "HS" in self.ncfile.variables:
+                data = np.ma.filled(self.ncfile.variables["HS"][0, ymin:ymax, xmin:xmax],
                                     fill_value=np.nan)
             else:
                 logging.debug(

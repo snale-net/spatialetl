@@ -29,7 +29,7 @@ requires-python = ">=3.12"
 authors = [
   {name = "Fabien RÉTIF", email = "fabien.retif@snale.net"},
 ]
-description = "Provider package spatialetl-providers-symphonie for SpatialETL"
+description = "Core packages for SpatialETL"
 
 dependencies = [
   "setuptools>=70.1.1",

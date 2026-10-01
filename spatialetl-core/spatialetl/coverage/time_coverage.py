@@ -365,7 +365,7 @@ class TimeCoverage(Coverage):
 
             indexes_t.append(int(t));
 
-        elif type(t) == datetime or type(t) == cftime._cftime.datetime or type(t) == cftime._cftime.real_datetime:
+        elif type(t) == datetime or type(t) == cftime._cftime.datetime or type(t) == cftime._cftime.real_datetime or type(t) == cftime._cftime.DatetimeGregorian:
 
             target_timestamp = (t - TimeCoverage.TIME_DATUM).total_seconds()
             array = self.read_axis_t(type="source_mpi", timestamp=1)
