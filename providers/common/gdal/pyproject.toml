@@ -34,7 +34,7 @@ readme = "README.md"
 
 dependencies = [
   "spatialetl>=0.2.0",
-  "gdal[numpy]==3.12.1",
+  "gdal[numpy]==3.13.1",
   "rasterio>=1.4.3",
   "geopandas>=0.14.4"
 ]
