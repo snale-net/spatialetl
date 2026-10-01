@@ -596,6 +596,15 @@ class DefaultWriter(CoverageWriter):
             VariableDefinition.CANONICAL_UNITS['barotropic_sea_water_from_direction']
         )
 
+    def write_variable_ocean_tracer_residence_time(self):
+        self._write_time_2d_scalar(
+            'read_variable_ocean_tracer_residence_time_at_time',
+            VariableDefinition.VARIABLE_NAME['ocean_tracer_residence_time'],
+            VariableDefinition.LONG_NAME['ocean_tracer_residence_time'],
+            VariableDefinition.STANDARD_NAME['ocean_tracer_residence_time'],
+            VariableDefinition.CANONICAL_UNITS['ocean_tracer_residence_time']
+        )
+
     #################
     # HYDRO
     # Sea Surface
@@ -664,6 +673,16 @@ class DefaultWriter(CoverageWriter):
             VariableDefinition.CANONICAL_UNITS['eastward_sea_water_velocity_at_sea_water_surface'],
             variable_comment="cur=sqrt(U**2+V**2)")
 
+    def write_variable_sea_surface_residence_time(self):
+
+        self._write_time_2d_scalar(
+            'read_variable_sea_surface_residence_time_at_time',
+            VariableDefinition.VARIABLE_NAME['sea_surface_residence_time'],
+            VariableDefinition.LONG_NAME['sea_surface_residence_time'],
+            VariableDefinition.STANDARD_NAME['sea_surface_residence_time'],
+            VariableDefinition.CANONICAL_UNITS['sea_surface_residence_time']
+        )
+
     #################
     # HYDRO
     # Ground level
@@ -702,6 +721,16 @@ class DefaultWriter(CoverageWriter):
             VariableDefinition.STANDARD_NAME['northward_sea_water_velocity_at_ground_level'],
             VariableDefinition.CANONICAL_UNITS['eastward_sea_water_velocity_at_ground_level'],
             variable_comment="cur=sqrt(U**2+V**2)")
+
+    def write_variable_residence_time_at_ground_level(self):
+
+        self._write_time_2d_scalar(
+            'read_variable_residence_time_at_ground_level_at_time',
+            VariableDefinition.VARIABLE_NAME['residence_time_at_ground_level'],
+            VariableDefinition.LONG_NAME['residence_time_at_ground_level'],
+            VariableDefinition.STANDARD_NAME['residence_time_at_ground_level'],
+            VariableDefinition.CANONICAL_UNITS['residence_time_at_ground_level']
+        )
 
     #################
     # HYDRO

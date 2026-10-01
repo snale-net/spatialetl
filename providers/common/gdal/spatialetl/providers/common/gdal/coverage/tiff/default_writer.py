@@ -446,6 +446,14 @@ class DefaultWriter(CoverageWriter):
             VariableDefinition.LONG_NAME['barotropic_sea_water_from_direction']
         )
 
+    def write_variable_ocean_tracer_residence_time(self):
+
+        self._write_time_2d_scalar(
+            'read_variable_ocean_tracer_residence_time_at_time',
+            VariableDefinition.VARIABLE_NAME['ocean_tracer_residence_time'],
+            VariableDefinition.LONG_NAME['ocean_tracer_residence_time']
+        )
+
     #################
     # HYDRO
     # Sea Surface
@@ -499,6 +507,14 @@ class DefaultWriter(CoverageWriter):
             VariableDefinition.VARIABLE_NAME['northward_sea_water_velocity_at_sea_water_surface']
         )
 
+    def write_variable_sea_surface_residence_time(self):
+
+        self._write_time_2d_scalar(
+            'read_variable_sea_surface_residence_time_at_time',
+            VariableDefinition.VARIABLE_NAME['sea_surface_residence_time'],
+            VariableDefinition.LONG_NAME['sea_surface_residence_time']
+        )
+
     #################
     # HYDRO
     # Ground level
@@ -527,6 +543,14 @@ class DefaultWriter(CoverageWriter):
             'Sea Water Velocity at Ground Level',
             VariableDefinition.VARIABLE_NAME['eastward_sea_water_velocity_at_ground_level'],
             VariableDefinition.VARIABLE_NAME['northward_sea_water_velocity_at_ground_level']
+        )
+
+    def write_variable_residence_time_at_ground_level(self):
+
+        self._write_time_2d_scalar(
+            'read_variable_residence_time_at_ground_level_at_time',
+            VariableDefinition.VARIABLE_NAME['residence_time_at_ground_level'],
+            VariableDefinition.LONG_NAME['residence_time_at_ground_level']
         )
 
     #################
