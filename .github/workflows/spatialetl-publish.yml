@@ -24,19 +24,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install setuptools wheel build
       - name: Build package
-        working-directory: spatialetl
         run: |
           python -m build
       - name: Publish main package distribution 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: spatialetl/
           skip-existing: true
           attestations: true
       - name: Build core package
-        working-directory: spatialetl-core
         run: |
-          python -m build
+          python -m build --outdir spatialetl-core
       - name: Publish core package distribution 📦 to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
