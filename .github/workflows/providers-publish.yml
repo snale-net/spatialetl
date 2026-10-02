@@ -65,8 +65,9 @@ jobs:
       - name: Build package
         working-directory: ${{ needs.release-checks.outputs.provider-path }}
         run: |
-          python -m build
+          python -m build ${{ needs.release-checks.outputs.provider-name == 'common-interpcgal' && '--sdist' || '' }}
       - name: "Publishing ${{ needs.release-checks.outputs.provider-name }} distribution 📦 to PyPI"
+        if: false
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: ${{ format('{0}/dist/', needs.release-checks.outputs.provider-path) }}
