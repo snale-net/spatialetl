@@ -24,7 +24,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "spatialetl-providers-common-gdal"
-version = "0.0.1"
+version = "0.0.2"
 requires-python = ">=3.9"
 authors = [
   {name = "Fabien RÉTIF", email = "fabien.retif@snale.net"},
@@ -33,7 +33,7 @@ description = "Provider package spatialetl-providers-common-gdal for SpatialETL"
 readme = "README.md"
 
 dependencies = [
-  "spatialetl>=0.2.0",
+  "spatialetl>=0.2.2",
   "gdal[numpy]==3.12.1",
   "rasterio>=1.4.3",
   "geopandas>=0.14.4"

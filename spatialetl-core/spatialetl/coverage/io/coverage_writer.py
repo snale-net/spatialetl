@@ -64,7 +64,7 @@ class CoverageWriter(ABC):
                 ] = local_data
 
             if self.coverage.comm:
-                # For othes MPI rank
+                # For others MPI rank
                 for source in range(1, self.coverage.size):
                     recvbuf = np.empty([self.coverage.parallel_map[source]["dst_local_y_size"],
                                         self.coverage.parallel_map[source]["dst_local_x_size"]])

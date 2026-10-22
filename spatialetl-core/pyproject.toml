@@ -24,7 +24,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "spatialetl-core"
-version = "0.0.1"
+version = "0.2.2"
 requires-python = ">=3.12"
 authors = [
   {name = "Fabien RÉTIF", email = "fabien.retif@snale.net"},
@@ -37,8 +37,8 @@ dependencies = [
   "numpy==2.3.1",
   "pandas==2.3.3",
   "scipy==1.16.3",
-  "array_split==0.6.5",
-  "pytest==9.0.1"
+  "array_split==0.7.1",
+  "pytest==9.0.3"
 ]
 
 [project.urls]

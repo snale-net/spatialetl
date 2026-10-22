@@ -152,7 +152,9 @@ class DefaultWriter(CoverageWriter):
         fn = getattr(self.coverage, function_name)
 
         self._gathering_var(fn(), var)
-        file.GetRasterBand(1).WriteArray(var)
+
+        if self.coverage.rank == 0:
+            file.GetRasterBand(1).WriteArray(var)
 
     def _write_time_2d_scalar(self,
                               function_name,
@@ -180,7 +182,10 @@ class DefaultWriter(CoverageWriter):
                     variable_fill_value=variable_fill_value)
 
                 self._gathering_var(fn(time), var, time_index=time_index)
-                file.GetRasterBand(1).WriteArray(var[time_index])
+
+                if self.coverage.rank == 0:
+                    file.GetRasterBand(1).WriteArray(var[time_index])
+
                 time_index += 1
         else:
             raise CoverageError("DefaultWriter",
@@ -259,7 +264,9 @@ class DefaultWriter(CoverageWriter):
                     variable_fill_value=variable_fill_value)
 
                 self._gathering_var(fn(level), var, level_index=level_index)
-                file.GetRasterBand(1).WriteArray(var[level_index])
+
+                if self.coverage.rank == 0:
+                    file.GetRasterBand(1).WriteArray(var[level_index])
 
                 level_index += 1
         else:
@@ -289,14 +296,15 @@ class DefaultWriter(CoverageWriter):
                 for level in self.coverage.read_axis_z():
                     file = self._create_file(
                         variable_name,
-                        variable_long_name,
                         time=time,
                         depth=level,
                         variable_type=variable_type,
                         variable_fill_value=variable_fill_value)
 
                     self._gathering_var(fn(time, level), var, time_index=time_index, level_index=level_index)
-                    file.GetRasterBand(1).WriteArray(var[time_index, level_index])
+
+                    if self.coverage.rank == 0:
+                        file.GetRasterBand(1).WriteArray(var[time_index, level_index])
 
                     level_index += 1
 
@@ -344,8 +352,10 @@ class DefaultWriter(CoverageWriter):
 
                     self._gathering_var(local_data_u, ucomp, time_index=time_index, level_index=level_index)
                     self._gathering_var(local_data_v, vcomp, time_index=time_index, level_index=level_index)
-                    ufile.GetRasterBand(1).WriteArray(ucomp[time_index, level_index])
-                    vfile.GetRasterBand(1).WriteArray(vcomp[time_index, level_index])
+
+                    if self.coverage.rank == 0:
+                        ufile.GetRasterBand(1).WriteArray(ucomp[time_index, level_index])
+                        vfile.GetRasterBand(1).WriteArray(vcomp[time_index, level_index])
 
                     level_index += 1
                 time_index += 1
