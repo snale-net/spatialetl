@@ -1,1 +1,1 @@
-# spatiaetl-core
+# spatialetl-core

@@ -27,10 +27,15 @@ jobs:
         if: ${{ (steps.provider-parser.outputs.match != '') }}
         id: provider-match
         run: |          
-          echo provider-path=$(echo spatialetl/providers/${{ steps.provider-parser.outputs.group1 }}) | sed 's/common-/common\//g' >> $GITHUB_OUTPUT
+          echo provider-path=$(echo providers/${{ steps.provider-parser.outputs.group1 }}) | sed 's/common-/common\//g' >> $GITHUB_OUTPUT
 
       - name: "Check if provider path exists"
-        if: ${{ (steps.provider-parser.outputs.match != '') && (hashFiles(steps.provider-match.outputs.provider-path) != '') }}
+        if: >-
+          ${{
+            steps.provider-parser.outputs.match != '' &&
+            steps.provider-match.outputs.provider-path != '' &&
+            hashFiles(steps.provider-match.outputs.provider-path) != ''
+          }}
         id: check-provider
         run: |
           echo provider-name=${{ steps.provider-parser.outputs.group1 }} >> $GITHUB_OUTPUT
@@ -60,7 +65,7 @@ jobs:
       - name: Build package
         working-directory: ${{ needs.release-checks.outputs.provider-path }}
         run: |
-          python -m build
+          python -m build ${{ needs.release-checks.outputs.provider-name == 'common-interpcgal' && '--sdist' || '' }}
       - name: "Publishing ${{ needs.release-checks.outputs.provider-name }} distribution 📦 to PyPI"
         uses: pypa/gh-action-pypi-publish@release/v1
         with:

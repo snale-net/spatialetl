@@ -30,6 +30,9 @@ authors = [
   {name = "Fabien RÉTIF", email = "fabien.retif@snale.net"},
 ]
 description = "Core packages for SpatialETL"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICEN[CS]E.*"]
 
 dependencies = [
   "setuptools>=70.1.1",
