@@ -39,6 +39,8 @@ from spatialetl.utils.variable_definition import VariableDefinition
 
 class DefaultWriter(CoverageWriter):
 
+    FILL_VALUE = 9999.0
+
     def __init__(self, cov, myFile):
         CoverageWriter.__init__(self, cov, myFile);
 
@@ -71,7 +73,7 @@ class DefaultWriter(CoverageWriter):
                      time=None,
                      depth=None,
                      variable_type=gdal.GDT_Float32,
-                     variable_fill_value=9.96921e+36):
+                     variable_fill_value=FILL_VALUE):
         if self.coverage.rank == 0:
             if time and depth:
                 file = self.driver.Create(os.path.join(
@@ -111,22 +113,23 @@ class DefaultWriter(CoverageWriter):
     def _create_var(self,
                     is_time_var=False,
                     is_depth_var=False,
+                    variable_fill_value=FILL_VALUE
                     ):
         if self.coverage.rank == 0:
             if is_time_var and is_depth_var:
                 var = np.empty(
                     [self.coverage.get_t_size(type="target_global"), self.coverage.get_z_size(type="target_global"),
                      int(self.cols), int(self.rows)])
-                var[:] = np.nan
+                var[:] = variable_fill_value
             elif is_depth_var:
                 var = np.empty([self.coverage.get_z_size(type="target_global"), int(self.cols), int(self.rows)])
-                var[:] = np.nan
+                var[:] = variable_fill_value
             elif is_time_var:
                 var = np.empty([self.coverage.get_t_size(type="target_global"), int(self.cols), int(self.rows)])
-                var[:] = np.nan
+                var[:] = variable_fill_value
             else:
                 var = np.empty([int(self.cols), int(self.rows)])
-                var[:] = np.nan
+                var[:] = variable_fill_value
         else:
             var = None
 
@@ -137,7 +140,7 @@ class DefaultWriter(CoverageWriter):
                          variable_name,
                          variable_long_name,
                          variable_type=gdal.GDT_Float32,
-                         variable_fill_value=9.96921e+36):
+                         variable_fill_value=FILL_VALUE):
 
         file = self._create_file(
             variable_name,
@@ -154,6 +157,9 @@ class DefaultWriter(CoverageWriter):
         self._gathering_var(fn(), var)
 
         if self.coverage.rank == 0:
+            # Replace np.nan by variable_fill_value
+            var[np.isnan(var)] = variable_fill_value
+
             file.GetRasterBand(1).WriteArray(var)
 
     def _write_time_2d_scalar(self,
@@ -161,7 +167,7 @@ class DefaultWriter(CoverageWriter):
                               variable_name,
                               variable_long_name,
                               variable_type=gdal.GDT_Float32,
-                              variable_fill_value=9.96921e+36):
+                              variable_fill_value=FILL_VALUE):
 
         if (isinstance(self.coverage, TimeCoverage) or isinstance(self.coverage, TimeLevelCoverage)):
 
@@ -184,6 +190,9 @@ class DefaultWriter(CoverageWriter):
                 self._gathering_var(fn(time), var, time_index=time_index)
 
                 if self.coverage.rank == 0:
+                    # Replace np.nan by variable_fill_value
+                    var[time_index][np.isnan(var[time_index])] = variable_fill_value
+
                     file.GetRasterBand(1).WriteArray(var[time_index])
 
                 time_index += 1
@@ -197,7 +206,7 @@ class DefaultWriter(CoverageWriter):
                               eastward_variable_name,
                               northward_variable_name,
                               variable_type=gdal.GDT_Float32,
-                              variable_fill_value=9.96921e+36
+                              variable_fill_value=FILL_VALUE
                               ):
 
         if (isinstance(self.coverage, TimeCoverage) or isinstance(self.coverage, TimeLevelCoverage)):
@@ -229,8 +238,17 @@ class DefaultWriter(CoverageWriter):
 
                 self._gathering_var(local_data_u, ucomp, time_index=time_index)
                 self._gathering_var(local_data_v, vcomp, time_index=time_index)
-                ufile.GetRasterBand(1).WriteArray(ucomp[time_index])
-                vfile.GetRasterBand(1).WriteArray(vcomp[time_index])
+
+                if self.coverage.rank == 0:
+                    # Replace np.nan by variable_fill_value
+                    ucomp[time_index][np.isnan(ucomp[time_index])] = variable_fill_value
+
+                    ufile.GetRasterBand(1).WriteArray(ucomp[time_index])
+
+                    # Replace np.nan by variable_fill_value
+                    vcomp[time_index][np.isnan(vcomp[time_index])] = variable_fill_value
+
+                    vfile.GetRasterBand(1).WriteArray(vcomp[time_index])
 
                 time_index += 1
         else:
@@ -242,7 +260,7 @@ class DefaultWriter(CoverageWriter):
                                variable_name,
                                variable_long_name,
                                variable_type=gdal.GDT_Float32,
-                               variable_fill_value=9.96921e+36
+                               variable_fill_value=FILL_VALUE
                                ):
 
         if (isinstance(self.coverage, LevelCoverage) or isinstance(self.coverage, TimeLevelCoverage)):
@@ -266,6 +284,9 @@ class DefaultWriter(CoverageWriter):
                 self._gathering_var(fn(level), var, level_index=level_index)
 
                 if self.coverage.rank == 0:
+                    # Replace np.nan by variable_fill_value
+                    var[level_index][np.isnan(var[level_index])] = variable_fill_value
+
                     file.GetRasterBand(1).WriteArray(var[level_index])
 
                 level_index += 1
@@ -278,7 +299,7 @@ class DefaultWriter(CoverageWriter):
                                     variable_name,
                                     variable_long_name,
                                     variable_type=gdal.GDT_Float32,
-                                    variable_fill_value=9.96921e+36
+                                    variable_fill_value=FILL_VALUE
                                     ):
 
         if (isinstance(self.coverage, TimeLevelCoverage)):
@@ -304,6 +325,9 @@ class DefaultWriter(CoverageWriter):
                     self._gathering_var(fn(time, level), var, time_index=time_index, level_index=level_index)
 
                     if self.coverage.rank == 0:
+                        # Replace np.nan by variable_fill_value
+                        var[time_index, level_index][np.isnan(var[time_index, level_index])] = variable_fill_value
+
                         file.GetRasterBand(1).WriteArray(var[time_index, level_index])
 
                     level_index += 1
@@ -318,7 +342,7 @@ class DefaultWriter(CoverageWriter):
                                     eastward_variable_name,
                                     northward_variable_name,
                                     variable_type=gdal.GDT_Float32,
-                                    variable_fill_value=9.96921e+36
+                                    variable_fill_value=FILL_VALUE
                                     ):
 
         if (isinstance(self.coverage, TimeLevelCoverage)):
@@ -354,7 +378,14 @@ class DefaultWriter(CoverageWriter):
                     self._gathering_var(local_data_v, vcomp, time_index=time_index, level_index=level_index)
 
                     if self.coverage.rank == 0:
+                        # Replace np.nan by variable_fill_value
+                        ucomp[time_index, level_index][np.isnan(ucomp[time_index, level_index])] = variable_fill_value
+
                         ufile.GetRasterBand(1).WriteArray(ucomp[time_index, level_index])
+
+                        # Replace np.nan by variable_fill_value
+                        vcomp[time_index, level_index][np.isnan(vcomp[time_index, level_index])] = variable_fill_value
+
                         vfile.GetRasterBand(1).WriteArray(vcomp[time_index, level_index])
 
                     level_index += 1

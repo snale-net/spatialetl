@@ -20,6 +20,7 @@
 # SOFTWARE.
 from __future__ import division, print_function, absolute_import
 
+import numpy as np
 import os
 from osgeo import gdal
 from osgeo import osr
@@ -37,6 +38,8 @@ class COGWriter(TiffWriter):
     Writer to write Cloud Optimized GeoTiff (COG)
     """
 
+    FILL_VALUE = 9999.0
+
     def __init__(self, cov, myFile):
         TiffWriter.__init__(self, cov, myFile);
         self.driver = gdal.GetDriverByName("MEM")
@@ -46,7 +49,7 @@ class COGWriter(TiffWriter):
                      time=None,
                      depth=None,
                      variable_type=gdal.GDT_Float32,
-                     variable_fill_value=9.96921e+36):
+                     variable_fill_value=FILL_VALUE):
         if self.coverage.rank == 0:
             if time and depth:
                 file = self.driver.Create("",
@@ -76,7 +79,7 @@ class COGWriter(TiffWriter):
                          variable_name,
                          variable_long_name,
                          variable_type=gdal.GDT_Float32,
-                         variable_fill_value=9.96921e+36):
+                         variable_fill_value=FILL_VALUE):
 
         file = self._create_file(
             variable_name,
@@ -93,6 +96,9 @@ class COGWriter(TiffWriter):
         self._gathering_var(fn(), var)
 
         if self.coverage.rank == 0:
+            # Replace np.nan by variable_fill_value
+            var[np.isnan(var)] = variable_fill_value
+
             file.GetRasterBand(1).WriteArray(var)
 
             self._write_cog(
@@ -105,7 +111,7 @@ class COGWriter(TiffWriter):
                               variable_name,
                               variable_long_name,
                               variable_type=gdal.GDT_Float32,
-                              variable_fill_value=9.96921e+36):
+                              variable_fill_value=FILL_VALUE):
 
         if (isinstance(self.coverage, TimeCoverage) or isinstance(self.coverage, TimeLevelCoverage)):
 
@@ -128,6 +134,9 @@ class COGWriter(TiffWriter):
                 self._gathering_var(fn(time), var, time_index=time_index)
 
                 if self.coverage.rank == 0:
+                    # Replace np.nan by variable_fill_value
+                    var[time_index][np.isnan(var[time_index])] = variable_fill_value
+
                     file.GetRasterBand(1).WriteArray(var[time_index])
 
                     self._write_cog(
@@ -146,7 +155,7 @@ class COGWriter(TiffWriter):
                               eastward_variable_name,
                               northward_variable_name,
                               variable_type=gdal.GDT_Float32,
-                              variable_fill_value=9.96921e+36
+                              variable_fill_value=FILL_VALUE
                               ):
 
         if (isinstance(self.coverage, TimeCoverage) or isinstance(self.coverage, TimeLevelCoverage)):
@@ -180,7 +189,14 @@ class COGWriter(TiffWriter):
                 self._gathering_var(local_data_v, vcomp, time_index=time_index)
 
                 if self.coverage.rank == 0:
+                    # Replace np.nan by variable_fill_value
+                    ucomp[time_index][np.isnan(ucomp[time_index])] = variable_fill_value
+
                     ufile.GetRasterBand(1).WriteArray(ucomp[time_index])
+
+                    # Replace np.nan by variable_fill_value
+                    vcomp[time_index][np.isnan(vcomp[time_index])] = variable_fill_value
+
                     vfile.GetRasterBand(1).WriteArray(vcomp[time_index])
 
                     self._write_cog(
@@ -203,7 +219,7 @@ class COGWriter(TiffWriter):
                                variable_name,
                                variable_long_name,
                                variable_type=gdal.GDT_Float32,
-                               variable_fill_value=9.96921e+36
+                               variable_fill_value=FILL_VALUE
                                ):
 
         if (isinstance(self.coverage, LevelCoverage) or isinstance(self.coverage, TimeLevelCoverage)):
@@ -227,6 +243,9 @@ class COGWriter(TiffWriter):
                 self._gathering_var(fn(level), var, level_index=level_index)
 
                 if self.coverage.rank == 0:
+                    # Replace np.nan by variable_fill_value
+                    var[level_index][np.isnan(var[level_index])] = variable_fill_value
+
                     file.GetRasterBand(1).WriteArray(var[level_index])
 
                     self._write_cog(
@@ -244,7 +263,7 @@ class COGWriter(TiffWriter):
                                     variable_name,
                                     variable_long_name,
                                     variable_type=gdal.GDT_Float32,
-                                    variable_fill_value=9.96921e+36
+                                    variable_fill_value=FILL_VALUE
                                     ):
 
         if (isinstance(self.coverage, TimeLevelCoverage)):
@@ -270,6 +289,9 @@ class COGWriter(TiffWriter):
                     self._gathering_var(fn(time, level), var, time_index=time_index, level_index=level_index)
 
                     if self.coverage.rank == 0:
+                        # Replace np.nan by variable_fill_value
+                        var[time_index, level_index][np.isnan(var[time_index, level_index])] = variable_fill_value
+
                         file.GetRasterBand(1).WriteArray(var[time_index, level_index])
 
                         self._write_cog(
@@ -290,7 +312,7 @@ class COGWriter(TiffWriter):
                                     eastward_variable_name,
                                     northward_variable_name,
                                     variable_type=gdal.GDT_Float32,
-                                    variable_fill_value=9.96921e+36
+                                    variable_fill_value=FILL_VALUE
                                     ):
 
         if (isinstance(self.coverage, TimeLevelCoverage)):
@@ -328,7 +350,14 @@ class COGWriter(TiffWriter):
                     self._gathering_var(local_data_v, vcomp, time_index=time_index, level_index=level_index)
 
                     if self.coverage.rank == 0:
+                        # Replace np.nan by variable_fill_value
+                        ucomp[time_index, level_index][np.isnan(ucomp[time_index, level_index])] = variable_fill_value
+
                         ufile.GetRasterBand(1).WriteArray(ucomp[time_index, level_index])
+
+                        # Replace np.nan by variable_fill_value
+                        vcomp[time_index, level_index][np.isnan(vcomp[time_index, level_index])] = variable_fill_value
+
                         vfile.GetRasterBand(1).WriteArray(vcomp[time_index, level_index])
 
                         self._write_cog(

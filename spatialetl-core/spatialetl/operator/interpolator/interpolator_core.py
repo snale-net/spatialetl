@@ -157,6 +157,9 @@ def resample_2d_to_grid(tri, newX, newY, data, method, map, interpolator="scipy"
                 local_data[local_data <= 0] = 0
                 local_data[local_data > 0] = 1
 
+            # Replace fill_value by NaN
+            local_data[local_data == fill_value] = np.nan
+
             return local_data
         except ModuleNotFoundError:
             logging.warning(f"Unable to find the cgal interpolator, we switch to scipy")
@@ -203,6 +206,9 @@ def resample_2d_to_grid(tri, newX, newY, data, method, map, interpolator="scipy"
             # we compute binary data from 0
             data[data <= 0] = 0
             data[data > 0] = 1
+
+        # Replace fill_value by NaN
+        data[data == fill_value] = np.nan
 
         return data
     else:
