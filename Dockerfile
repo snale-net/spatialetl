@@ -150,9 +150,13 @@ RUN ldconfig
 
 # Share
 COPY --from=prebuilt /build/proj/gcc142/9.7.1/share/ /usr/local/share/
+COPY --from=prebuilt /build/gdal/gcc142/3.12.1/share/ /usr/local/share/
 
 # Bin
 COPY --from=prebuilt /build/gdal/gcc142/3.12.1/bin/ /usr/local/bin/
+
+# Export
+#ENV GDAL_DATA="/usr/local/share/gdal"
 
 # Copy the environment, but not the source code
 COPY --from=python-builder --chown=app:app /app/.venv /app/.venv

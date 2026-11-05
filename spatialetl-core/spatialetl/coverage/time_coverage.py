@@ -605,7 +605,7 @@ class TimeCoverage(Coverage):
             @param t: date souhaitée
             @return: un tableau en deux dimensions [y,x].
         """
-        fn = getattr(self.reader, "read_variable_sea_surface_biogeochemical_tracer_1_at_time")
+        fn = getattr(self.reader, "read_variable_sea_surface_biogeochemical_tracer_at_time")
 
         indexes_t = self.find_time_index(t);
 
@@ -664,7 +664,7 @@ class TimeCoverage(Coverage):
             @param t: date souhaitée
             @return: un tableau en deux dimensions [y,x].
         """
-        fn = getattr(self.reader, "read_variable_biogeochemical_tracer_1_at_ground_level_at_time")
+        fn = getattr(self.reader, "read_variable_biogeochemical_tracer_at_ground_level_at_time")
 
         indexes_t = self.find_time_index(t);
 

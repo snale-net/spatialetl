@@ -24,13 +24,12 @@ from __future__ import division, print_function, absolute_import
 
 import numpy as np
 
-from spatialetl.providers.symphonie.coverage.netcdf.symphonie_reader import SYMPHONIEReader as AbstractSYMPHONIEReader
 from spatialetl.exception.variable_name_error import VariableNameError
-from spatialetl.utils.variable_definition import VariableDefinition
+from spatialetl.providers.symphonie.coverage.netcdf.symphonie_reader import SYMPHONIEReader as AbstractSYMPHONIEReader
 from spatialetl.utils.logger import logging
 
 
-class SYMPHONIEEulerianDriftersReader(AbstractSYMPHONIEReader):
+class SYMPHONIEEulerianTracersReader(AbstractSYMPHONIEReader):
     """
 La classe SymphonieReader permet de lire les données du format Symphonie
 
@@ -38,25 +37,30 @@ La classe SymphonieReader permet de lire les données du format Symphonie
 @param myFile : lien vers le fichier de données (que l'on trouve dans GRAPHIQUES)
 """
 
-    def __init__(self,myGrid, myFile):
+    def __init__(self,myGrid, myFile,tracer_index=1):
         AbstractSYMPHONIEReader.__init__(self, myGrid, myFile);
+
+        self.tracer_index = tracer_index
+
+    def set_tracer_index(self, index):
+        self.tracer_index = index
 
     #################
     # HYDRO
     # Sea Surface
     #################
 
-    def read_variable_sea_surface_biogeochemical_tracer_1_at_time(self, index_t, xmin, xmax, ymin, ymax):
+    def read_variable_sea_surface_biogeochemical_tracer_at_time(self, index_t, xmin, xmax, ymin, ymax):
         try:
             self.open_file(index_t)
             index_z = self.get_z_size() - 1
-            if "bio1" in self.ncfile.variables:
-                data = np.ma.filled(self.ncfile.variables["bio1"][0, index_z, ymin:ymax, xmin:xmax],
+            if f"bio{self.tracer_index}" in self.ncfile.variables:
+                data = np.ma.filled(self.ncfile.variables[f"bio{self.tracer_index}"][0, index_z, ymin:ymax, xmin:xmax],
                                     fill_value=np.nan)
             else:
-                logging.debug("No variables found for 'sea_surface_biogeochemical_tracer_1'")
-                raise (VariableNameError("SymphonieReader",
-                                         "No variables found for 'sea_surface_biogeochemical_tracer_1'",
+                logging.debug(f"No variables found for 'sea_surface_biogeochemical_tracer_{self.tracer_index}'")
+                raise (VariableNameError("SymphonieEulerianTracersReader",
+                                         f"No variables found for 'sea_surface_biogeochemical_tracer_{self.tracer_index}'",
                                          1000))
 
             if AbstractSYMPHONIEReader.APPLY_WET_MASK and "wetmask_t" in self.ncfile.variables:  # We apply the wetmask
@@ -66,24 +70,24 @@ La classe SymphonieReader permet de lire les données du format Symphonie
 
         except Exception as ex:
             logging.debug("Error '" + str(ex) + "'")
-            raise (VariableNameError("SymphonieReader", "An error occured : '" + str(ex) + "'", 1000))
+            raise (VariableNameError("SymphonieEulerianTracersReader", "An error occured : '" + str(ex) + "'", 1000))
 
-    #################
-    # HYDRO
-    # Ground level
-    #################
+        #################
+        # HYDRO
+        # Ground level
+        #################
 
-    def read_variable_biogeochemical_tracer_1_at_ground_level_at_time(self, index_t, xmin, xmax, ymin, ymax):
+    def read_variable_biogeochemical_tracer_at_ground_level_at_time(self, index_t, xmin, xmax, ymin, ymax):
         try:
             self.open_file(index_t)
             index_z = 0
-            if "bio1" in self.ncfile.variables:
-                data = np.ma.filled(self.ncfile.variables["bio1"][0, index_z, ymin:ymax, xmin:xmax],
+            if f"bio{self.tracer_index}" in self.ncfile.variables:
+                data = np.ma.filled(self.ncfile.variables[f"bio{self.tracer_index}"][0, index_z, ymin:ymax, xmin:xmax],
                                     fill_value=np.nan)
             else:
-                logging.debug("No variables found for 'biogeochemical_tracer_1_at_ground_level'")
-                raise (VariableNameError("SymphonieReader",
-                                         "No variables found for 'biogeochemical_tracer_1_at_ground_level'",
+                logging.debug(f"No variables found for 'biogeochemical_tracer_{self.tracer_index}_at_ground_level'")
+                raise (VariableNameError("SymphonieEulerianTracersReader",
+                                         f"No variables found for 'biogeochemical_tracer_{self.tracer_index}_at_ground_level'",
                                          1000))
 
             if AbstractSYMPHONIEReader.APPLY_WET_MASK and "wetmask_t" in self.ncfile.variables:  # We apply the wetmask
@@ -93,4 +97,4 @@ La classe SymphonieReader permet de lire les données du format Symphonie
 
         except Exception as ex:
             logging.debug("Error '" + str(ex) + "'")
-            raise (VariableNameError("SymphonieReader", "An error occured : '" + str(ex) + "'", 1000))
+            raise (VariableNameError("SymphonieEulerianTracersReader", "An error occured : '" + str(ex) + "'", 1000))
