@@ -21,7 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 from __future__ import division, print_function, absolute_import
-
+from spatialetl.utils.logger import logging
 import numpy as np
 
 
@@ -45,6 +45,9 @@ def compute_residence_time(sourceAxis, data):
 
     if C_valid.size == 0:
         return TR_vec.reshape(Ny, Nx)
+
+    if np.all(C_valid[0]  == 0):
+        logging.warn("Tracers concentration at initial time is 0 everywhere.")
 
     # --- Threshold ---
     seuil = C_valid[0, :] / np.exp(1)

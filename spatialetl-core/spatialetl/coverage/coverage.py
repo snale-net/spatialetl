@@ -523,209 +523,401 @@ class Coverage(object):
                                   parent_slice: tuple = None):
         """
         Compute slice coordinates in the source grid and the destination grid with overlap.
-
         Args:
             slice (tuple): Current slice to compute
-            source_global_x_size (int) : Size of the global source x axis
-            source_global_y_size (int) : Size of the global source y axis
-            target_global_x_size (int) : Size of the global target x axis
-            target_global_y_size (int) : Size of the global target y axis
-            parent_slice (tuple, optionial) : Slice of the parent slice
+            source_global_x_size (int): Size of the global source x axis
+            source_global_y_size (int): Size of the global source y axis
+            target_global_x_size (int): Size of the global target x axis
+            target_global_y_size (int): Size of the global target y axis
+            parent_slice (tuple, optional): Slice of the parent slice
         """
+
         map = {}
 
-        #### Destination grid ###
+        ### Destination grid ###
         if parent_slice is not None:
             map["dst_global_x"] = np.s_[
-                parent_slice["dst_global_x"].start + slice[1].start:parent_slice["dst_global_x"].start + slice[1].stop]
+                parent_slice["dst_global_x"].start + slice[1].start:
+                parent_slice["dst_global_x"].start + slice[1].stop
+            ]
+
             map["dst_global_y"] = np.s_[
-                parent_slice["dst_global_y"].start + slice[0].start:parent_slice["dst_global_y"].start + slice[0].stop]
+                parent_slice["dst_global_y"].start + slice[0].start:
+                parent_slice["dst_global_y"].start + slice[0].stop
+            ]
         else:
             map["dst_global_x"] = slice[1]
             map["dst_global_y"] = slice[0]
 
         # Compute overlap
         if parent_slice is not None:
+
+            # Position of the thread core inside the parent overlap grid
+            thread_x_start = parent_slice["dst_local_x"].start + slice[1].start
+            thread_x_stop = parent_slice["dst_local_x"].start + slice[1].stop
+
+            thread_y_start = parent_slice["dst_local_y"].start + slice[0].start
+            thread_y_stop = parent_slice["dst_local_y"].start + slice[0].stop
+
             # X
-            dst_parent_x_min_overlap = max(0, slice[1].start - Coverage.HORIZONTAL_OVERLAPING_SIZE)
+            dst_parent_x_min_overlap = max(
+                0,
+                thread_x_start - Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
             dst_parent_x_max_overlap = min(
-                min(self.target_global_x_size, target_global_x_size + Coverage.HORIZONTAL_OVERLAPING_SIZE),
-                slice[1].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE)
+                parent_slice["dst_global_x_size_overlap"],
+                thread_x_stop + Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
 
-            dst_global_x_min_overlap = max(0, map["dst_global_x"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE)
-            dst_global_x_max_overlap = min(parent_slice["dst_global_x"].start + target_global_x_size,
-                                           map["dst_global_x"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE)
+            dst_global_x_min_overlap = max(
+                parent_slice["dst_global_x_overlap"].start,
+                map["dst_global_x"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
+            dst_global_x_max_overlap = min(
+                parent_slice["dst_global_x_overlap"].stop,
+                map["dst_global_x"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
 
             # Y
-            dst_parent_y_min_overlap = max(0, slice[0].start - Coverage.HORIZONTAL_OVERLAPING_SIZE)
+            dst_parent_y_min_overlap = max(
+                0,
+                thread_y_start - Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
             dst_parent_y_max_overlap = min(
-                min(self.target_global_y_size, target_global_y_size + Coverage.HORIZONTAL_OVERLAPING_SIZE),
-                slice[0].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE)
+                parent_slice["dst_global_y_size_overlap"],
+                thread_y_stop + Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
 
-            dst_global_y_min_overlap = max(0, map["dst_global_y"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE)
-            dst_global_y_max_overlap = min(parent_slice["dst_global_y"].start + target_global_y_size,
-                                           map["dst_global_y"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE)
+            dst_global_y_min_overlap = max(
+                parent_slice["dst_global_y_overlap"].start,
+                map["dst_global_y"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
+            dst_global_y_max_overlap = min(
+                parent_slice["dst_global_y_overlap"].stop,
+                map["dst_global_y"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
         else:
+
             # X
-            dst_global_x_min_overlap = max(0, map["dst_global_x"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE)
-            dst_global_x_max_overlap = min(target_global_x_size,
-                                           map["dst_global_x"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE)
+            dst_global_x_min_overlap = max(
+                0,
+                map["dst_global_x"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
+            dst_global_x_max_overlap = min(
+                target_global_x_size,
+                map["dst_global_x"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
 
             # Y
-            dst_global_y_min_overlap = max(0, map["dst_global_y"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE)
-            dst_global_y_max_overlap = min(target_global_y_size,
-                                           map["dst_global_y"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE)
+            dst_global_y_min_overlap = max(
+                0,
+                map["dst_global_y"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
 
-        map["dst_global_x_overlap"] = np.s_[dst_global_x_min_overlap:dst_global_x_max_overlap]
-        map["dst_global_y_overlap"] = np.s_[dst_global_y_min_overlap:dst_global_y_max_overlap]
+            dst_global_y_max_overlap = min(
+                target_global_y_size,
+                map["dst_global_y"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
 
-        map["dst_global_x_size_overlap"] = map["dst_global_x_overlap"].stop - map["dst_global_x_overlap"].start
-        map["dst_global_y_size_overlap"] = map["dst_global_y_overlap"].stop - map["dst_global_y_overlap"].start
+        map["dst_global_x_overlap"] = np.s_[
+            dst_global_x_min_overlap:dst_global_x_max_overlap
+        ]
+
+        map["dst_global_y_overlap"] = np.s_[
+            dst_global_y_min_overlap:dst_global_y_max_overlap
+        ]
+
+        map["dst_global_x_size_overlap"] = (
+                map["dst_global_x_overlap"].stop -
+                map["dst_global_x_overlap"].start
+        )
+
+        map["dst_global_y_size_overlap"] = (
+                map["dst_global_y_overlap"].stop -
+                map["dst_global_y_overlap"].start
+        )
 
         if parent_slice is not None:
-            map["dst_parent_x"] = slice[1]
-            map["dst_parent_y"] = slice[0]
-            map["dst_parent_x_overlap"] = np.s_[dst_parent_x_min_overlap:dst_parent_x_max_overlap]
-            map["dst_parent_y_overlap"] = np.s_[dst_parent_y_min_overlap:dst_parent_y_max_overlap]
-            map["dst_parent_x_size_overlap"] = map["dst_parent_x_overlap"].stop - map["dst_parent_x_overlap"].start
-            map["dst_parent_y_size_overlap"] = map["dst_parent_y_overlap"].stop - map["dst_parent_y_overlap"].start
+            map["dst_parent_x"] = np.s_[thread_x_start:thread_x_stop]
+            map["dst_parent_y"] = np.s_[thread_y_start:thread_y_stop]
 
-        # Compute dest local grid
-        dst_local_x_size = map["dst_global_x"].stop - map["dst_global_x"].start
-        dst_local_y_size = map["dst_global_y"].stop - map["dst_global_y"].start
+            map["dst_parent_x_overlap"] = np.s_[
+                dst_parent_x_min_overlap:dst_parent_x_max_overlap
+            ]
+
+            map["dst_parent_y_overlap"] = np.s_[
+                dst_parent_y_min_overlap:dst_parent_y_max_overlap
+            ]
+
+            map["dst_parent_x_size_overlap"] = (
+                    map["dst_parent_x_overlap"].stop -
+                    map["dst_parent_x_overlap"].start
+            )
+
+            map["dst_parent_y_size_overlap"] = (
+                    map["dst_parent_y_overlap"].stop -
+                    map["dst_parent_y_overlap"].start
+            )
+
+        # Compute destination local grid
+        dst_local_x_size = (
+                map["dst_global_x"].stop -
+                map["dst_global_x"].start
+        )
+
+        dst_local_y_size = (
+                map["dst_global_y"].stop -
+                map["dst_global_y"].start
+        )
 
         if map["dst_global_x"].start <= Coverage.HORIZONTAL_OVERLAPING_SIZE:
             dst_local_x_min = map["dst_global_x"].start
         else:
-            dst_local_x_min = map["dst_global_x"].start - map["dst_global_x_overlap"].start
+            dst_local_x_min = (
+                    map["dst_global_x"].start -
+                    map["dst_global_x_overlap"].start
+            )
 
         if map["dst_global_y"].start <= Coverage.HORIZONTAL_OVERLAPING_SIZE:
             dst_local_y_min = map["dst_global_y"].start
         else:
-            dst_local_y_min = map["dst_global_y"].start - map["dst_global_y_overlap"].start
+            dst_local_y_min = (
+                    map["dst_global_y"].start -
+                    map["dst_global_y_overlap"].start
+            )
 
         dst_local_x_max = dst_local_x_min + dst_local_x_size
         dst_local_y_max = dst_local_y_min + dst_local_y_size
 
-        map["dst_local_x"] = np.s_[dst_local_x_min:dst_local_x_max]
-        map["dst_local_y"] = np.s_[dst_local_y_min:dst_local_y_max]
+        map["dst_local_x"] = np.s_[
+            dst_local_x_min:dst_local_x_max
+        ]
+
+        map["dst_local_y"] = np.s_[
+            dst_local_y_min:dst_local_y_max
+        ]
 
         map["dst_local_x_size"] = dst_local_x_size
         map["dst_local_y_size"] = dst_local_y_size
 
-        dst_local_x_min_overlap = max(0, map["dst_local_x"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE)
-        dst_local_x_max_overlap = min(target_global_x_size,
-                                      map["dst_local_x"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE)
+        dst_local_x_min_overlap = max(
+            0,
+            map["dst_local_x"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE
+        )
 
-        dst_local_y_min_overlap = max(0, map["dst_local_y"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE)
-        dst_local_y_max_overlap = min(target_global_y_size,
-                                      map["dst_local_y"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE)
+        dst_local_x_max_overlap = min(
+            target_global_x_size,
+            map["dst_local_x"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE
+        )
 
-        map["dst_local_x_overlap"] = np.s_[dst_local_x_min_overlap:dst_local_x_max_overlap]
-        map["dst_local_y_overlap"] = np.s_[dst_local_y_min_overlap:dst_local_y_max_overlap]
-        map["dst_local_x_size_overlap"] = map["dst_local_x_overlap"].stop - map["dst_local_x_overlap"].start
-        map["dst_local_y_size_overlap"] = map["dst_local_y_overlap"].stop - map["dst_local_y_overlap"].start
+        dst_local_y_min_overlap = max(
+            0,
+            map["dst_local_y"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE
+        )
+
+        dst_local_y_max_overlap = min(
+            target_global_y_size,
+            map["dst_local_y"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE
+        )
+
+        map["dst_local_x_overlap"] = np.s_[
+            dst_local_x_min_overlap:dst_local_x_max_overlap
+        ]
+
+        map["dst_local_y_overlap"] = np.s_[
+            dst_local_y_min_overlap:dst_local_y_max_overlap
+        ]
+
+        map["dst_local_x_size_overlap"] = (
+                map["dst_local_x_overlap"].stop -
+                map["dst_local_x_overlap"].start
+        )
+
+        map["dst_local_y_size_overlap"] = (
+                map["dst_local_y_overlap"].stop -
+                map["dst_local_y_overlap"].start
+        )
 
         # TODO case of target irregular grid
-        target_global_axis_x = self.target_global_axis_x[map["dst_global_x"]]
-        target_global_axis_y = self.target_global_axis_y[map["dst_global_y"]]
+        target_global_axis_x = self.target_global_axis_x[
+            map["dst_global_x"]
+        ]
 
-        ### Source grille ###
-        # Find xmin, xmax, ymin, ymax coordinates of the destination grid in the source grid
+        target_global_axis_y = self.target_global_axis_y[
+            map["dst_global_y"]
+        ]
+
+        ### Source grid ###
+        # Find xmin, xmax, ymin, ymax coordinates
+        # of the destination grid in the source grid
         if self.is_regular_grid(type="source"):
+
             if np.min(target_global_axis_x) == np.max(target_global_axis_x):
+
                 idx = np.where(
-                    (self.source_global_axis_x >= np.min(
-                        target_global_axis_x)))
+                    self.source_global_axis_x >= np.min(target_global_axis_x)
+                )
+
             else:
+
                 idx = np.where(
-                    (self.source_global_axis_x >= np.min(
-                        target_global_axis_x)) &
-                    (self.source_global_axis_x <= np.max(
-                        target_global_axis_x)))
+                    (self.source_global_axis_x >= np.min(target_global_axis_x)) &
+                    (self.source_global_axis_x <= np.max(target_global_axis_x))
+                )
 
             if idx[0].size == 0:
-                raise ValueError(f"Unable to find target xmin / xmax in the source grid")
+                raise ValueError(
+                    "Unable to find target xmin / xmax in the source grid"
+                )
+
             xmin = np.min(idx[0])
             xmax = np.max(idx[0]) + 1
 
             if np.min(target_global_axis_y) == np.max(target_global_axis_y):
+
                 idx = np.where(
-                    (self.source_global_axis_y >= np.min(
-                        target_global_axis_y)))
+                    self.source_global_axis_y >= np.min(target_global_axis_y)
+                )
+
             else:
+
                 idx = np.where(
-                    (self.source_global_axis_y >= np.min(
-                        target_global_axis_y)) &
-                    (self.source_global_axis_y < np.max(
-                        target_global_axis_y)))
+                    (self.source_global_axis_y >= np.min(target_global_axis_y)) &
+                    (self.source_global_axis_y < np.max(target_global_axis_y))
+                )
 
             if idx[0].size == 0:
-                raise ValueError(f"Unable to find target ymin / ymax in the source grid")
+                raise ValueError(
+                    "Unable to find target ymin / ymax in the source grid"
+                )
 
             ymin = np.min(idx[0])
             ymax = np.max(idx[0]) + 1
+
         else:
+
             idx = np.where(
-                (self.source_global_axis_x >= np.min(
-                    target_global_axis_x)) &
-                (self.source_global_axis_x <= np.max(
-                    target_global_axis_x)) &
-                (self.source_global_axis_y >= np.min(
-                    target_global_axis_y)) &
-                (self.source_global_axis_y <= np.max(
-                    target_global_axis_y)))
+                (self.source_global_axis_x >= np.min(target_global_axis_x)) &
+                (self.source_global_axis_x <= np.max(target_global_axis_x)) &
+                (self.source_global_axis_y >= np.min(target_global_axis_y)) &
+                (self.source_global_axis_y <= np.max(target_global_axis_y))
+            )
 
             if np.shape(idx)[1] == 0:
-                logging.debug(f"Unable to find target xmin / xmax / ymin / ymax in the source grid")
+
+                logging.debug(
+                    "Unable to find target xmin / xmax / ymin / ymax in the source grid"
+                )
+
                 ymin = 0
                 ymax = self.source_global_y_size
                 xmin = 0
                 xmax = self.source_global_x_size
 
             else:
+
                 ymin = np.min(idx[0])
                 ymax = np.max(idx[0]) + 1
+
                 xmin = np.min(idx[1])
                 xmax = np.max(idx[1]) + 1
 
-        # Compute source global slice with new xmin, xmax, ymin, ymax
-        if parent_slice is not None:
-            map["src_global_x"] = np.s_[
-                int(parent_slice["src_global_x"].start + xmin): int(parent_slice["src_global_x"].start + xmax)]
-            map["src_global_y"] = np.s_[
-                int(parent_slice["src_global_y"].start + ymin):int(parent_slice["src_global_y"].start + ymax)]
-        else:
-            map["src_global_x"] = np.s_[int(xmin): int(xmax)]
-            map["src_global_y"] = np.s_[int(ymin):int(ymax)]
+        # Compute source global slice.
+        # xmin/xmax/ymin/ymax are already global indices because
+        # they were computed from source_global_axis_x/y.
+        map["src_global_x"] = np.s_[
+            int(xmin):int(xmax)
+        ]
+
+        map["src_global_y"] = np.s_[
+            int(ymin):int(ymax)
+        ]
 
         map["src_global_x_size"] = xmax - xmin
         map["src_global_y_size"] = ymax - ymin
 
+        # --------------------------------------------------
         # Source global X overlap
-        src_global_x_min_overlap = max(0, map["src_global_x"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE)
+        # --------------------------------------------------
         if parent_slice is not None:
-            src_global_x_max_overlap = min(parent_slice["src_global_x_size_overlap"],
-                                           map["src_global_x"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE)
-        else:
-            src_global_x_max_overlap = min(source_global_x_size,
-                                           map["src_global_x"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE)
-        map["src_global_x_overlap"] = np.s_[src_global_x_min_overlap:src_global_x_max_overlap]
 
+            parent_src_x_overlap = parent_slice["src_global_x_overlap"]
+
+            src_global_x_min_overlap = max(
+                parent_src_x_overlap.start,
+                map["src_global_x"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
+            src_global_x_max_overlap = min(
+                parent_src_x_overlap.stop,
+                map["src_global_x"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
+        else:
+
+            src_global_x_min_overlap = max(
+                0,
+                map["src_global_x"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
+            src_global_x_max_overlap = min(
+                source_global_x_size,
+                map["src_global_x"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
+        map["src_global_x_overlap"] = np.s_[
+            src_global_x_min_overlap:src_global_x_max_overlap
+        ]
+
+        # --------------------------------------------------
         # Source global Y overlap
-        src_global_y_min_overlap = max(0, map["src_global_y"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE)
+        # --------------------------------------------------
         if parent_slice is not None:
-            src_global_y_max_overlap = min(parent_slice["src_global_y_size_overlap"],
-                                           map["src_global_y"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE)
-        else:
-            src_global_y_max_overlap = min(source_global_y_size,
-                                           map["src_global_y"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE)
 
-        map["src_global_y_overlap"] = np.s_[src_global_y_min_overlap:src_global_y_max_overlap]
+            parent_src_y_overlap = parent_slice["src_global_y_overlap"]
+
+            src_global_y_min_overlap = max(
+                parent_src_y_overlap.start,
+                map["src_global_y"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
+            src_global_y_max_overlap = min(
+                parent_src_y_overlap.stop,
+                map["src_global_y"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
+        else:
+
+            src_global_y_min_overlap = max(
+                0,
+                map["src_global_y"].start - Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
+            src_global_y_max_overlap = min(
+                source_global_y_size,
+                map["src_global_y"].stop + Coverage.HORIZONTAL_OVERLAPING_SIZE
+            )
+
+        map["src_global_y_overlap"] = np.s_[
+            src_global_y_min_overlap:src_global_y_max_overlap
+        ]
 
         # Source global overlap size
-        map["src_global_x_size_overlap"] = map["src_global_x_overlap"].stop - map["src_global_x_overlap"].start
-        map["src_global_y_size_overlap"] = map["src_global_y_overlap"].stop - map["src_global_y_overlap"].start
+        map["src_global_x_size_overlap"] = (
+                map["src_global_x_overlap"].stop -
+                map["src_global_x_overlap"].start
+        )
+
+        map["src_global_y_size_overlap"] = (
+                map["src_global_y_overlap"].stop -
+                map["src_global_y_overlap"].start
+        )
 
         # Recompute source local slice
         src_local_x_size = map["src_global_x_size"]
@@ -734,19 +926,30 @@ class Coverage(object):
         if map["src_global_x"].start <= Coverage.HORIZONTAL_OVERLAPING_SIZE:
             src_local_x_min = map["src_global_x"].start
         else:
-            src_local_x_min = map["src_global_x"].start - map["src_global_x_overlap"].start
+            src_local_x_min = (
+                    map["src_global_x"].start -
+                    map["src_global_x_overlap"].start
+            )
 
         src_local_x_max = src_local_x_min + src_local_x_size
 
         if map["src_global_y"].start <= Coverage.HORIZONTAL_OVERLAPING_SIZE:
             src_local_y_min = map["src_global_y"].start
         else:
-            src_local_y_min = map["src_global_y"].start - map["src_global_y_overlap"].start
+            src_local_y_min = (
+                    map["src_global_y"].start -
+                    map["src_global_y_overlap"].start
+            )
 
         src_local_y_max = src_local_y_min + src_local_y_size
 
-        map["src_local_x"] = np.s_[int(src_local_x_min):int(src_local_x_max)]
-        map["src_local_y"] = np.s_[int(src_local_y_min):int(src_local_y_max)]
+        map["src_local_x"] = np.s_[
+            int(src_local_x_min):int(src_local_x_max)
+        ]
+
+        map["src_local_y"] = np.s_[
+            int(src_local_y_min):int(src_local_y_max)
+        ]
 
         map["src_local_x_size"] = src_local_x_size
         map["src_local_y_size"] = src_local_y_size
@@ -754,8 +957,14 @@ class Coverage(object):
         # Overlap
         src_local_x_size_overlap = map["src_global_x_size_overlap"]
         src_local_y_size_overlap = map["src_global_y_size_overlap"]
-        map["src_local_x_overlap"] = np.s_[0:src_local_x_size_overlap]
-        map["src_local_y_overlap"] = np.s_[0:src_local_y_size_overlap]
+
+        map["src_local_x_overlap"] = np.s_[
+            0:src_local_x_size_overlap
+        ]
+
+        map["src_local_y_overlap"] = np.s_[
+            0:src_local_y_size_overlap
+        ]
 
         map["src_local_x_size_overlap"] = src_local_x_size_overlap
         map["src_local_y_size_overlap"] = src_local_y_size_overlap
