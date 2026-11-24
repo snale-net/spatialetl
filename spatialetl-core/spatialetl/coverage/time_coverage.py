@@ -46,6 +46,12 @@ class TimeCoverage(Coverage):
 
     TIME_DATUM = datetime(1970, 1, 1)
     TIME_DELTA = timedelta(minutes=15)
+    TIME_DELTA_DIRECTION = "both"
+    #  direction:
+    #             - both   : recherche avant et après t
+    #             - after  : recherche uniquement après t
+    #             - before : recherche uniquement avant t
+
     TIME_INTERPOLATION_METHOD = "nearest"
     TIME_OVERLAPING_SIZE = 0
 
@@ -350,68 +356,93 @@ class TimeCoverage(Coverage):
 
     # Axis
     def find_time_index(self, t, domain="source"):
-        """Retourne l'index de la date la plus proche à TIME_DELTA_MIN prêt.
-    @type t: datetime ou int
-    @param t: date souhaitée ou l'index de la date souhaitée
-    @return:  l'index de la date la plus proche à TIME_DELTA_MIN prêt ou une erreur si aucune date n'a pu être trouvée."""
-
+        """
+        Retourne les index des dates proches de t.
+        """
         indexes_t = []
 
         if type(t) == int or type(t) == np.int32 or type(t) == np.int64:
 
             if t < 0 or t >= self.get_t_size():
-                raise ValueError("Time index have to range between 0 and " + str(
-                    self.get_t_size() - 1) + ". Actually Time index = " + str(t))
+                raise ValueError(
+                    "Time index have to range between 0 and "
+                    + str(self.get_t_size() - 1)
+                    + ". Actually Time index = " + str(t)
+                )
 
-            indexes_t.append(int(t));
+            indexes_t.append(int(t))
 
-        elif type(t) == datetime or type(t) == cftime._cftime.datetime or type(t) == cftime._cftime.real_datetime or type(t) == cftime._cftime.DatetimeGregorian:
+        elif isinstance(t, (datetime, cftime.datetime)):
 
-            target_timestamp = (t - TimeCoverage.TIME_DATUM).total_seconds()
+            if TimeCoverage.TIME_DELTA_DIRECTION not in ("both", "after", "before"):
+                raise ValueError(
+                    "direction must be one of [both, after, before]"
+                )
+
+            target_timestamp = (
+                    t - TimeCoverage.TIME_DATUM
+            ).total_seconds()
+
             array = self.read_axis_t(type="source_mpi", timestamp=1)
 
-            logging.debug("[TimeCoverage][find_time_index()] Looking for : " + str(t))
+            logging.debug(
+                "[TimeCoverage][find_time_index()] Looking for : " + str(t)
+            )
 
-            X = np.abs(array - target_timestamp)
-            idx = np.where(X <= (TimeCoverage.TIME_DELTA).total_seconds())
+            delta = (array - target_timestamp)
+            tolerance = TimeCoverage.TIME_DELTA.total_seconds()
 
-            if (len(idx[0]) == 1):
-                index_t = idx[0][0]
+            if TimeCoverage.TIME_DELTA_DIRECTION == "both":
+                idx = np.where(np.abs(delta) <= tolerance)
+
+            elif TimeCoverage.TIME_DELTA_DIRECTION == "after":
+                idx = np.where((delta >= 0) & (delta <= tolerance))
+
+            elif TimeCoverage.TIME_DELTA_DIRECTION == "before":
+                idx = np.where((delta <= 0) & (delta >= -tolerance))
+
+            for index_t in idx[0]:
+
                 if domain == "source":
                     indexes_t.append(int(index_t))
+
                 elif domain == "source_global":
-                    indexes_t.append(self.parallel_map[self.rank]["src_global_t"].start + int(index_t))
+                    indexes_t.append(
+                        self.parallel_map[self.rank]["src_global_t"].start
+                        + int(index_t)
+                    )
+
                 else:
-                    raise ValueError("Type doesn't match [source, source_global]")
+                    raise ValueError(
+                        "Type doesn't match [source, source_global]"
+                    )
 
                 logging.debug(
-                    f"[TimeCoverage][find_time_index()] Found : {self.read_axis_t(type='source_mpi', timestamp=0)[int(index_t)]}")
-
-            else:
-                for index in range(np.shape(idx)[1]):
-                    index_t = idx[0][index]
-
-                    if domain == "source":
-                        indexes_t.append(int(index_t))
-                    elif domain == "source_global":
-                        indexes_t.append(self.parallel_map[self.rank]["src_global_t"].start + int(index_t))
-                    else:
-                        raise ValueError("Type doesn't match [source, source_global]")
-
-                    logging.debug(
-                        f"[TimeCoverage][find_time_index()] Found : {self.read_axis_t(type='source_mpi', timestamp=0)[int(index_t)]}")
+                    f"[TimeCoverage][find_time_index()] Found : "
+                    f"{self.read_axis_t(type='source_mpi', timestamp=0)[int(index_t)]}"
+                )
 
             if not indexes_t:
-                raise NotFoundInRankError(self.rank,
-                                          "'" + str(
-                                              t) + "' not found. Maybe the TimeCoverage.TIME_DELTA (" + str(
-                                              TimeCoverage.TIME_DELTA) + ") is too small or the date is out the range.")
+                raise NotFoundInRankError(
+                    self.rank,
+                    "'" + str(t) + "' not found. Maybe the TimeCoverage.TIME_DELTA "
+                    + "(" + str(TimeCoverage.TIME_DELTA)
+                    + ") is too small or the date is out the range."
+                )
 
         else:
-            raise ValueError("" + str(t) + " have to be an integer or a datetime. Current type: " + str(type(t)))
+            raise ValueError(
+                str(t) + " have to be an integer or a datetime. "
+                + "Current type: " + str(type(t))
+            )
 
         indexes_t = np.array(np.sort(np.unique(indexes_t)))
-        logging.debug("[TimeCoverage][find_time_index()] Found " + str(len(indexes_t)) + " candidate datetime(s)")
+
+        logging.debug(
+            "[TimeCoverage][find_time_index()] Found "
+            + str(len(indexes_t))
+            + " candidate datetime(s)"
+        )
 
         return indexes_t
 
